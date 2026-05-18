@@ -1,0 +1,138 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "username": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "A connection between two users.",
+      "type": "object",
+      "properties": {
+        "user1Id": { "type": "string" },
+        "user2Id": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["user1Id", "user2Id", "status"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "A church or study group.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "joinCode": { "type": "string" },
+        "members": { "type": "array", "items": { "type": "string" } },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "joinCode", "createdBy", "members"]
+    },
+    "GroupMessage": {
+      "title": "GroupMessage",
+      "description": "A message in a group chat.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "verseData": { 
+          "type": "object",
+          "properties": {
+            "book": { "type": "string" },
+            "chapter": { "type": "string" },
+            "verse": { "type": "string" },
+            "text": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["groupId", "senderId", "text"]
+    },
+    "DirectMessage": {
+      "title": "DirectMessage",
+      "description": "A message between two users.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["senderId", "receiverId", "text"]
+    },
+    "Highlight": {
+      "title": "Highlight",
+      "description": "A highlighted verse or range of verses.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "chapter": { "type": "integer" },
+        "verseNumbers": { "type": "array", "items": { "type": "integer" } },
+        "color": { "type": "string", "enum": ["yellow", "green", "blue", "pink", "purple"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "bookId", "chapter", "verseNumbers", "color"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A user note on a specific verse or range.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "bookId": { "type": "string" },
+        "chapter": { "type": "integer" },
+        "verseNumbers": { "type": "array", "items": { "type": "integer" } },
+        "text": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "bookId", "chapter", "verseNumbers", "text", "isPublic"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Profiles of registered users."
+    },
+    "/highlights/{highlightId}": {
+      "schema": "Highlight",
+      "description": "User Bible highlights."
+    },
+    "/notes/{noteId}": {
+      "schema": "Note",
+      "description": "User Bible notes."
+    },
+    "/friendships/{friendshipId}": {
+      "schema": "Friendship",
+      "description": "User connections."
+    },
+    "/groups/{groupId}": {
+      "schema": "Group",
+      "description": "Church or study groups."
+    },
+    "/groupMessages/{messageId}": {
+      "schema": "GroupMessage",
+      "description": "Messages within groups."
+    },
+    "/directMessages/{messageId}": {
+      "schema": "DirectMessage",
+      "description": "Messages between users."
+    }
+  }
+}

@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. CATCH-ALL DEFAULT DENY
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // HELPERS
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incomingData() {
+      return request.resource.data;
+    }
+
+    // 2. USER RULES
+    function isValidUser(user) {
+      return user.uid == request.auth.uid 
+        && user.email is string
+        && user.email.size() <= 256;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incomingData());
+      allow update: if isSignedIn() && isOwner(userId) && isValidUser(incomingData())
+                    && incomingData().diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'username']);
+    }
+
+    // 3. HIGHLIGHT RULES
+    function isValidHighlight(h) {
+      return h.userId == request.auth.uid
+        && h.bookId is string && h.bookId.size() <= 64
+        && h.chapter is int
+        && h.verseNumbers is list
+        && h.verseNumbers.size() <= 100
+        && h.color in ['yellow', 'green', 'blue', 'pink', 'purple', 'transparent'];
+    }
+
+    match /highlights/{highlightId} {
+      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidHighlight(incomingData());
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid 
+                    && isValidHighlight(incomingData())
+                    && incomingData().diff(resource.data).affectedKeys().hasOnly(['color']);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 4. NOTE RULES
+    function isValidNote(n) {
+      return n.userId == request.auth.uid
+        && n.bookId is string && n.bookId.size() <= 64
+        && n.chapter is int
+        && n.verseNumbers is list
+        && n.text is string && n.text.size() <= 5000
+        && n.isPublic is bool;
+    }
+
+    match /notes/{noteId} {
+      allow get: if resource.data.isPublic == true || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if resource.data.isPublic == true || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidNote(incomingData());
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid 
+                    && isValidNote(incomingData())
+                    && incomingData().diff(resource.data).affectedKeys().hasOnly(['text', 'isPublic']);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 5. SOCIAL RULES
+    match /friendships/{friendshipId} {
+      allow read: if isSignedIn() && (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
+      allow create: if isSignedIn() && (incomingData().user1Id == request.auth.uid || incomingData().user2Id == request.auth.uid);
+      allow update: if isSignedIn() && (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
+      allow delete: if isSignedIn() && (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
+    }
+
+    match /groups/{groupId} {
+      allow read: if isSignedIn(); // Allow anyone logged in to see a group (for joining)
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (request.auth.uid in resource.data.members || request.auth.uid == resource.data.createdBy);
+    }
+
+    match /groupMessages/{messageId} {
+      allow read: if isSignedIn() && exists(/databases/$(database)/documents/groups/$(resource.data.groupId)) && request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.members;
+      allow create: if isSignedIn() && request.auth.uid == incomingData().senderId && request.auth.uid in get(/databases/$(database)/documents/groups/$(incomingData().groupId)).data.members;
+    }
+
+    match /directMessages/{messageId} {
+      allow read: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow create: if isSignedIn() && request.auth.uid == incomingData().senderId;
+    }
+  }
+}
